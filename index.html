@@ -6,12 +6,8 @@
   <title>Verifikasi Kamera - SRMA 12 Bogor</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
     body {
       font-family: 'Poppins', sans-serif;
       background: linear-gradient(135deg, #1e3a8a, #2563eb, #06b6d4);
@@ -50,17 +46,8 @@
       box-shadow: 0 10px 30px rgba(249, 115, 22, 0.4);
     }
 
-    h1 {
-      font-size: 1.8rem;
-      font-weight: 700;
-      margin-bottom: 8px;
-    }
-
-    .subtitle {
-      opacity: 0.9;
-      font-size: 0.95rem;
-      margin-bottom: 30px;
-    }
+    h1 { font-size: 1.8rem; font-weight: 700; margin-bottom: 8px; }
+    .subtitle { opacity: 0.9; font-size: 0.95rem; margin-bottom: 30px; }
 
     .card {
       background: rgba(255, 255, 255, 0.12);
@@ -101,9 +88,7 @@
       display: none;
     }
 
-    .cam-preview.active video {
-      display: block;
-    }
+    .cam-preview.active video { display: block; }
 
     .cam-placeholder {
       position: absolute;
@@ -114,15 +99,13 @@
       color: rgba(255, 255, 255, 0.6);
     }
 
-    .cam-placeholder i {
+    .cam-placeholder .icon-cam {
       font-size: 48px;
       margin-bottom: 10px;
       display: block;
     }
 
-    .cam-preview.active .cam-placeholder {
-      display: none;
-    }
+    .cam-preview.active .cam-placeholder { display: none; }
 
     .status-text {
       font-size: 0.9rem;
@@ -130,13 +113,8 @@
       min-height: 24px;
     }
 
-    .status-text.success {
-      color: #4ade80;
-    }
-
-    .status-text.error {
-      color: #fca5a5;
-    }
+    .status-text.success { color: #4ade80; }
+    .status-text.error { color: #fca5a5; }
 
     .btn {
       border: none;
@@ -162,10 +140,7 @@
       box-shadow: 0 12px 30px rgba(249, 115, 22, 0.5);
     }
 
-    .btn-primary:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
 
     .btn-success {
       background: linear-gradient(135deg, #22c55e, #16a34a);
@@ -188,7 +163,7 @@
       text-align: left;
     }
 
-    .info-box i {
+    .info-box .icon-info {
       margin-right: 8px;
       color: #facc15;
     }
@@ -205,13 +180,7 @@
       vertical-align: middle;
     }
 
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    .hidden {
-      display: none !important;
-    }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
     @media (max-width: 480px) {
       h1 { font-size: 1.4rem; }
@@ -232,7 +201,7 @@
       
       <div class="cam-preview" id="camPreview">
         <div class="cam-placeholder">
-          <span style="font-size: 40px;">📷</span>
+          <span class="icon-cam">📷</span>
           <div>Kamera Belum Aktif</div>
         </div>
         <video id="videoCam" autoplay playsinline muted></video>
@@ -251,7 +220,7 @@
       </button>
 
       <div class="info-box">
-        <i>ℹ️</i>
+        <span class="icon-info">ℹ️</span>
         <strong>Catatan:</strong> Kamera akan tetap aktif selama ujian berlangsung. 
         Sistem akan mengirim snapshot secara berkala untuk pemantauan pengawas.
       </div>
@@ -264,7 +233,7 @@
 
   <script>
     // ==========================================================
-    // KONFIGURASI FIREBASE (GANTI DENGAN CONFIG ANDA)
+    // KONFIGURASI FIREBASE - GANTI DENGAN CONFIG ANDA
     // ==========================================================
     
     const firebaseConfig = {
@@ -359,13 +328,13 @@
         let pesan = '❌ ';
         switch(err.name) {
           case 'NotAllowedError':
-            pesan += 'Kamera ditolak. Pastikan Anda mengizinkan akses kamera di browser.';
+            pesan += 'Kamera ditolak. Klik ikon kunci di address bar, lalu izinkan kamera.';
             break;
           case 'NotFoundError':
             pesan += 'Kamera tidak ditemukan. Pastikan webcam terhubung.';
             break;
           case 'NotReadableError':
-            pesan += 'Kamera sedang digunakan aplikasi lain.';
+            pesan += 'Kamera sedang digunakan aplikasi lain (Zoom, Meet, dll).';
             break;
           default:
             pesan += err.message || 'Gagal mengakses kamera.';
@@ -392,12 +361,12 @@
       canvas.height = 240;
       const ctx = canvas.getContext('2d');
       
-      // Flip horizontal agar seperti mirror
+      // Flip horizontal (mirror effect)
       ctx.translate(canvas.width, 0);
       ctx.scale(-1, 1);
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       
-      // Compress ke JPEG quality 0.3 (kecil & cepat)
+      // Compress ke JPEG quality 0.3
       const base64 = canvas.toDataURL('image/jpeg', 0.3);
 
       // Simpan ke Firebase
@@ -451,14 +420,13 @@
       // Update status
       updateStatusFirebase('Sedang Mengerjakan');
 
-      // Redirect ke Apps Script dengan parameter
       // GANTI URL INI dengan URL deployment Apps Script Anda
       const appsScriptUrl = scriptUrl || 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec';
       const redirectUrl = appsScriptUrl + '?page=ujian&nis=' + encodeURIComponent(nis) + 
                           '&nama=' + encodeURIComponent(nama) + 
                           '&kelas=' + encodeURIComponent(kelas);
 
-      // Simpan flag bahwa kamera sudah terverifikasi
+      // Simpan flag kamera terverifikasi
       localStorage.setItem('cameraVerified', 'true');
       localStorage.setItem('cameraVerifiedAt', new Date().toISOString());
 
