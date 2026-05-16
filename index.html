@@ -227,60 +227,37 @@
     </div>
   </div>
 
-  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
   <script>
-    // ==========================================================
-    // KONFIGURASI FIREBASE - GANTI DENGAN CONFIG ANDA
-    // ==========================================================
-    
     const firebaseConfig = {
       databaseURL: "https://asatsrma12-default-rtdb.asia-southeast1.firebasedatabase.app/"
     };
-
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // ==========================================================
-    // AMBIL PARAMETER DARI URL
-    // ==========================================================
-    
     const urlParams = new URLSearchParams(window.location.search);
     const nis = urlParams.get('nis') || localStorage.getItem('nis');
     const nama = urlParams.get('nama') || localStorage.getItem('nama');
     const kelas = urlParams.get('kelas') || localStorage.getItem('kelas');
     const scriptUrl = urlParams.get('script') || localStorage.getItem('scriptUrl');
 
-    // Simpan ke localStorage untuk persistensi
     if (nis) localStorage.setItem('nis', nis);
     if (nama) localStorage.setItem('nama', nama);
     if (kelas) localStorage.setItem('kelas', kelas);
     if (scriptUrl) localStorage.setItem('scriptUrl', scriptUrl);
 
-    // ==========================================================
-    // CEK PARAMETER
-    // ==========================================================
-    
     if (!nis || !nama) {
       document.getElementById('statusText').innerHTML = 
         '<span class="error">❌ Data siswa tidak valid. Silakan login ulang dari portal.</span>';
       document.getElementById('btnAktifkan').disabled = true;
     }
 
-    // ==========================================================
-    // VARIABEL GLOBAL
-    // ==========================================================
-    
     let streamKamera = null;
     let intervalSnapshot = null;
     let isCameraActive = false;
 
-    // ==========================================================
-    // FUNGSI AKTIFKAN KAMERA
-    // ==========================================================
-    
     function aktifkanKamera() {
       const btn = document.getElementById('btnAktifkan');
       const status = document.getElementById('statusText');
@@ -291,181 +268,94 @@
       btn.innerHTML = '<span class="spinner"></span> Meminta izin...';
 
       navigator.mediaDevices.getUserMedia({ 
-        video: { 
-          width: { ideal: 320 },
-          height: { ideal: 240 },
-          facingMode: 'user'
-        } 
+        video: { width: { ideal: 320 }, height: { ideal: 240 }, facingMode: 'user' } 
       })
       .then(stream => {
         streamKamera = stream;
         video.srcObject = stream;
-        
         preview.classList.add('active');
-        
         status.innerHTML = '<span class="success">✅ Kamera berhasil diaktifkan!</span>';
         status.className = 'status-text success';
-        
         btn.style.display = 'none';
         document.getElementById('btnMulai').style.display = 'inline-block';
-        
         isCameraActive = true;
-
-        // Update status ke Firebase
-        updateStatusFirebase('Kamera Aktif - Menunggu Ujian');
-
-        // Kirim snapshot pertama
-        setTimeout(kirimSnapshot, 1000);
         
-        // Mulai kirim snapshot berkala (30 detik)
+        updateStatusFirebase('Kamera Aktif - Menunggu Ujian');
+        setTimeout(kirimSnapshot, 1000);
         intervalSnapshot = setInterval(kirimSnapshot, 30000);
-
-        console.log('Kamera aktif untuk:', nis, nama);
       })
       .catch(err => {
-        console.error('Kamera error:', err);
-        
         let pesan = '❌ ';
         switch(err.name) {
-          case 'NotAllowedError':
-            pesan += 'Kamera ditolak. Klik ikon kunci di address bar, lalu izinkan kamera.';
-            break;
-          case 'NotFoundError':
-            pesan += 'Kamera tidak ditemukan. Pastikan webcam terhubung.';
-            break;
-          case 'NotReadableError':
-            pesan += 'Kamera sedang digunakan aplikasi lain (Zoom, Meet, dll).';
-            break;
-          default:
-            pesan += err.message || 'Gagal mengakses kamera.';
+          case 'NotAllowedError': pesan += 'Kamera ditolak. Klik ikon kunci di address bar, lalu izinkan kamera.'; break;
+          case 'NotFoundError': pesan += 'Kamera tidak ditemukan. Pastikan webcam terhubung.'; break;
+          case 'NotReadableError': pesan += 'Kamera sedang digunakan aplikasi lain (Zoom, Meet, dll).'; break;
+          default: pesan += err.message || 'Gagal mengakses kamera.';
         }
-        
         status.innerHTML = '<span class="error">' + pesan + '</span>';
         status.className = 'status-text error';
-        
         btn.disabled = false;
         btn.innerHTML = '📷 Coba Lagi';
       });
     }
 
-    // ==========================================================
-    // KIRIM SNAPSHOT KE FIREBASE
-    // ==========================================================
-    
     function kirimSnapshot() {
       if (!streamKamera || !isCameraActive) return;
-
       const video = document.getElementById('videoCam');
       const canvas = document.createElement('canvas');
-      canvas.width = 320;
-      canvas.height = 240;
+      canvas.width = 320; canvas.height = 240;
       const ctx = canvas.getContext('2d');
-      
-      // Flip horizontal (mirror effect)
       ctx.translate(canvas.width, 0);
       ctx.scale(-1, 1);
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      
-      // Compress ke JPEG quality 0.3
       const base64 = canvas.toDataURL('image/jpeg', 0.3);
 
-      // Simpan ke Firebase
       db.ref('camera/' + nis).set({
-        image: base64,
-        nama: nama,
-        kelas: kelas,
-        timestamp: new Date().toISOString(),
-        status: 'aktif'
-      })
-      .then(() => {
-        console.log('Snapshot terkirim:', nis);
-      })
-      .catch(err => {
-        console.error('Gagal kirim snapshot:', err);
-      });
+        image: base64, nama: nama, kelas: kelas,
+        timestamp: new Date().toISOString(), status: 'aktif'
+      }).catch(err => console.error('Gagal kirim snapshot:', err));
 
-      // Update monitoring juga
       updateStatusFirebase('Sedang Mengerjakan');
     }
 
-    // ==========================================================
-    // UPDATE STATUS KE FIREBASE MONITORING
-    // ==========================================================
-    
     function updateStatusFirebase(statusText) {
       db.ref('monitoring/' + nis).set({
-        nis: nis,
-        nama: nama,
-        kelas: kelas,
-        status: statusText,
-        camera: isCameraActive ? 'Aktif' : 'Mati',
+        nis: nis, nama: nama, kelas: kelas,
+        status: statusText, camera: isCameraActive ? 'Aktif' : 'Mati',
         lastUpdate: new Date().toISOString()
       });
     }
 
-    // ==========================================================
-    // MULAI UJIAN - REDIRECT KE APPS SCRIPT
-    // ==========================================================
-    
     function mulaiUjian() {
-      if (!isCameraActive) {
-        alert('Kamera harus aktif terlebih dahulu!');
-        return;
-      }
-
+      if (!isCameraActive) { alert('Kamera harus aktif terlebih dahulu!'); return; }
       const btn = document.getElementById('btnMulai');
       btn.disabled = true;
       btn.innerHTML = '<span class="spinner"></span> Memuat ujian...';
-
-      // Update status
       updateStatusFirebase('Sedang Mengerjakan');
-
-      // GANTI URL INI dengan URL deployment Apps Script Anda
+      
       const appsScriptUrl = scriptUrl || 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec';
       const redirectUrl = appsScriptUrl + '?page=ujian&nis=' + encodeURIComponent(nis) + 
-                          '&nama=' + encodeURIComponent(nama) + 
-                          '&kelas=' + encodeURIComponent(kelas);
-
-      // Simpan flag kamera terverifikasi
+                          '&nama=' + encodeURIComponent(nama) + '&kelas=' + encodeURIComponent(kelas);
+      
       localStorage.setItem('cameraVerified', 'true');
       localStorage.setItem('cameraVerifiedAt', new Date().toISOString());
-
-      // Redirect setelah 1 detik
-      setTimeout(() => {
-        window.location.href = redirectUrl;
-      }, 1000);
+      setTimeout(() => window.location.href = redirectUrl, 1000);
     }
 
-    // ==========================================================
-    // CLEANUP SAAT HALAMAN DITUTUP
-    // ==========================================================
-    
     window.addEventListener('beforeunload', function() {
-      if (streamKamera) {
-        streamKamera.getTracks().forEach(track => track.stop());
-      }
-      if (intervalSnapshot) {
-        clearInterval(intervalSnapshot);
-      }
+      if (streamKamera) streamKamera.getTracks().forEach(track => track.stop());
+      if (intervalSnapshot) clearInterval(intervalSnapshot);
     });
 
-    // ==========================================================
-    // DETEKSI TAB VISIBILITY (Anti Curang)
-    // ==========================================================
-    
     document.addEventListener('visibilitychange', function() {
       if (document.hidden && isCameraActive) {
-        // Kirim pelanggaran ke Firebase
         db.ref('monitoring/' + nis).update({
           pelanggaran: 'Pindah Tab pada ' + new Date().toLocaleTimeString('id-ID'),
           status: '⚠️ TERDETEKSI CURANG'
         });
-        
         db.ref('logs').push({
-          timestamp: new Date().toISOString(),
-          aksi: 'PELANGGARAN',
-          detail: 'Siswa pindah tab saat verifikasi kamera',
-          user: nama + ' (' + nis + ')'
+          timestamp: new Date().toISOString(), aksi: 'PELANGGARAN',
+          detail: 'Siswa pindah tab saat verifikasi kamera', user: nama + ' (' + nis + ')'
         });
       }
     });
